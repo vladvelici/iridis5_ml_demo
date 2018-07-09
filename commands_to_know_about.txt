@@ -1,0 +1,11 @@
+screen
+tar
+ls
+rsync
+grep
+sed
+find
+xargs
+$(.)
+$?
+$1, $2, $@

@@ -10,4 +10,4 @@ source venv/bin/activate
 
 i=${SLURM_ARRAY_TASK_ID}
 
-./train.py --index-array $i -o $1
+./train.py --index-array $i -o $1 --epochs 25
