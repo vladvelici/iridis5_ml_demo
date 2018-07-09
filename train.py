@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from __future__ import print_function
 import argparse
 import torch
@@ -11,10 +13,15 @@ from tqdm import tqdm
 import os
 import sys
 
+import numpy as np
+
 from net import Net
+
+import json
 
 def train(args, model, device, train_loader, optimizer, epoch):
     model.train()
+    losses = []
     for batch_idx, (data, target) in enumerate(tqdm(train_loader, desc="training")):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
@@ -26,6 +33,9 @@ def train(args, model, device, train_loader, optimizer, epoch):
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
+            losses.append(loss.item())
+
+    return np.mean(losses)
 
 def test(args, model, device, test_loader):
     model.eval()
@@ -48,7 +58,7 @@ def test(args, model, device, test_loader):
 
 def prep_output(args):
     if args.o is not None:
-        o = os.path.join(args.o, str(args.lr))
+        o = os.path.join(args.o, str(args.index_array))
 
         if not os.path.exists(o):
             os.makedirs(o)
@@ -57,7 +67,7 @@ def prep_output(args):
         args.o = o
 
         with open(os.path.join(args.o, "meta.json"), "w") as f:
-            json.dump(f, vars(args))
+            json.dump(vars(args), f)
 
 def main():
     # Training settings
@@ -84,11 +94,12 @@ def main():
     parser.add_argument("-o", help="save folder", default=None)
 
     args = parser.parse_args()
-    prep_output(args)
 
     if args.index_array is not None:
         lin = np.linspace(0.0001, 0.5, 50)
         args.lr = lin[args.index_array]
+
+    prep_output(args)
 
     use_cuda = not args.no_cuda and torch.cuda.is_available()
 
@@ -116,10 +127,10 @@ def main():
     optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
     if args.o is not None:
-        f = open(os.path.join(args.o, "log.csv"))
+        f = open(os.path.join(args.o, "log.csv"), "w")
         print("epoch, loss, test loss, test acc", file=f)
 
-    for epoch in range(1, args.epochs + 1):
+    for epoch in tqdm(range(1, args.epochs + 1), desc="epoch"):
         loss = train(args, model, device, train_loader, optimizer, epoch)
         test_loss, acc = test(args, model, device, test_loader)
 
